@@ -1,0 +1,21 @@
+Function Split-List {
+    param(
+    [parameter(mandatory)]$List,
+    [ValidateSet("Numbers", "Letters")]$Add
+    )
+    
+    $Count = 1
+    if ($Add -match "Numbers") {
+        if ($($List.Count) -gt 1) {
+            $List | % {-join ("$Count. $_"); $Count++}
+            } else {
+            $($($List.Replace(", ", "`n")).Replace(",", "`n")).Split("`n") | % {-join ("$Count. $_"); $Count++}
+            }
+        } elseif ($Add -match "Letters") {
+            if ($($List.Count) -gt 1) {
+                $List | % {-join ("$([char]$($Count+64)). $_"); $Count++}
+                } else {
+                $($($List.Replace(", ", "`n")).Replace(",", "`n")).Split("`n") | % {-join ("$([char]$($Count+64)) $_"); $_.Insert(0, "$([char]$($Count+64)). "); $Count++}
+                }
+            }
+      }

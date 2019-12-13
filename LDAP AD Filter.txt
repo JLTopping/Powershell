@@ -1,0 +1,19 @@
+Function LDAPSearch{
+    param(
+    [parameter(mandatory=$true)]$SamAccountName
+    )
+
+    #Create Filter
+    $strFilter = "(&(objectCategory=user)(objectClass=user)(samaccountName= $SamAccountName ))"
+
+    #Must Edit To Match Your Domain
+    $objSearcher = [adsisearcher][ADSI]"GC://dc=your,dc=domain,dc=com"   #EDIT
+
+    $objSearcher.PageSize = 1000
+    $objSearcher.Filter = $strFilter
+    $objSearcher.SearchScope = "Subtree"
+    $colResults = $objSearcher.FindAll()
+
+    if ($($colResults.Properties)) {$colResults.Properties}
+        else {Write-Host "Sorry, User could not be found" -ForegroundColor Red}
+    }

@@ -1,0 +1,16 @@
+#CASE SENSITIVE
+Function Get-AllIndexes {
+    param(
+    [parameter(mandatory=$true)][string]$String,
+    [parameter(mandatory=$true)][string]$SubstringToSearchFor
+    )
+
+    #Keep track of index for recursions
+    $RunningIndex = 0
+
+    #Account for the "Split" function taking out each occurrence of the Substring
+    $SplitCount = $SubstringToSearchFor.Length
+
+    #Split at all indexes and disregard final substring
+    $String.split($SubstringToSearchFor) | % {$_.Length + $RunningIndex; $RunningIndex = $RunningIndex + $_.Length + $SplitCount} | ? {($_ + 1) -le $String.length}
+    }

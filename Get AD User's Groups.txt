@@ -1,0 +1,9 @@
+Function Get-ADUsersGroups {
+    param(
+    [parameter(mandatory=$true)]$User,
+    $Server = $env:USERDNSDOMAIN
+    )
+
+    $DN = (Get-ADUser $User -Server $Server).DistinguishedName
+    Get-ADGroup -LDAPFilter("(member:1.2.840.113556.1.4.1941:={0})" -f $DN) -Server $Server
+    }

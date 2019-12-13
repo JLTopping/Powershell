@@ -1,0 +1,33 @@
+Function Get-SCSMUserInput {
+    param(
+    [parameter(mandatory)][string]$SR
+    )
+
+    $SMcom = "your.SCSM.Server"    #Edit
+
+    #Pull SR
+    $SRTasks = Get-SCSMObject -Class (Get-SCSMClass -Name System.WorkItem.ServiceRequest$ -ComputerName $SMcom) -Filter "Id -eq $SR" -ComputerName $SMcom
+
+    #Create Local Variables
+    $Input = $SRTasks.UserInput
+    $Length = $Input.length
+
+    #Parse SR Information Into PSObject
+    while($True) {
+        $QuestionIndex = $Input.IndexOf("Question") + 10
+        if ($QuestionIndex -eq 9) {Return}
+        $AnswerIndex = $Input.IndexOf("Answer") + 8
+        $TypeIndex = $Input.IndexOf("Type")
+
+        $QuestionLength = $($AnswerIndex - 10) - $QuestionIndex
+        $AnswerLength = $($TypeIndex - 2) - $AnswerIndex
+    
+        $Question = $Input.Substring($($QuestionIndex), $QuestionLength)
+        $Answer = $Input.Substring($($AnswerIndex), $AnswerLength)
+        
+        Select-Object @{n='Question';e={$Question}},@{n='Value';e={$Answer}} -InputObject ''
+        
+        $Input = $Input.substring($TypeIndex + 4, $($Length - $TypeIndex - 4))
+        $Length = $Input.Length
+        }
+    }

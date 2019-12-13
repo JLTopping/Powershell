@@ -1,0 +1,45 @@
+Function New-Email {   
+    param(
+    [parameter(mandatory=$true)][string]$SendTo, 
+    [string]$SendFrom="your@email.com",   #EDIT
+    [parameter(mandatory=$true)][string]$Subject,
+    [string]$Body, 
+    [string]$Attachment
+    ) 
+
+    try{
+        #Edit with your SMTP Server info
+        $SMTPServer = "172.12.34.56"   #EDIT
+        $Msg = new-object Net.Mail.MailMessage
+        $SMTP = new-object Net.Mail.SmtpClient($SMTPServer)
+
+        #Implement parameter inputs
+        $Msg.From = "$SendFrom"
+        $Msg.ReplyTo = "noreply@domain.com"   #EDIT
+        Foreach ($Person in $SendTo) {$msg.To.Add($Person)}
+        $Msg.Subject = "$Subject"
+        $Msg.body = "$Body"
+
+        #Check for attachment
+        if ($Attachment) {
+            if ($(Test-Path $Attachment)) {
+
+                #Add attachment
+                $SMTPattachment = New-Object System.Net.Mail.Attachment($Attachment)
+                $SMTPMessage.Attachments.Add($STMPattachment)
+                } else {
+
+                #Attachment error
+                Write-host "Attachment could not be found.`nPlease check that attachment path exists." -ForegroundColor Red
+                Break
+                }
+            }
+
+        #Send message
+        $SMTP.Send($Msg)
+        } catch {
+
+        #Generic error
+        write-host "Error. Could Not Send Message" -ForegroundColor Red
+        }
+    }

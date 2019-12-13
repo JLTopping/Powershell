@@ -1,0 +1,54 @@
+Function Search-AD {
+    param(
+    [string]$EmployeeID,
+    [string]$FirstName,
+    [string]$LastName,
+    [string]$Domain = $env:USERDNSDOMAIN
+    )
+
+    #Parse Domain into Correct Syntax
+    $NewDomain = $($Domain.Replace(".", ",dc=")).Insert(0,"dc=")
+
+    #Search for User by SamAccountName
+    if ($INT) {
+        $strFilter = "(&(objectCategory=user)(objectClass=user)(samaccountname=$EmployeeID))"
+        $objSearcher = [adsisearcher][ADSI]"GC://$NewDomain"
+        $objSearcher.PageSize = 1000
+        $objSearcher.Filter = $strFilter
+        $objSearcher.SearchScope = "Subtree"
+        $colResults = $objSearcher.FindAll()
+        if ($($colResults.Properties)) {
+            [pscustomobject]@{
+                FirstName = $($colResults.Properties.givenname)
+                LastName = $($colResults.Properties.sn)
+                FullName = $($colResults.Properties.displayname)
+                DistinguishedName = $($colResults.Properties.distinguishedname)
+                Email = $($colResults.Properties.mail)
+                EmployeeID = $($colResults.Properties.samaccountname)
+                }
+                } else {
+                write-host "Sorry, that EmployeeID could not be found in $Domain"
+                }
+            } else {
+
+            #Search For User by Name
+            if ($FirstName -and $LastName) {
+                $strFilter = "(&(objectCategory=user)(objectClass=user)(givenname=$FirstName)(sn=$LastName))"
+                } elseif ($FirstName -and !$LastName) {
+                $strFilter = "(&(objectCategory=user)(objectClass=user)(givenname=$FirstName))"
+                } elseif (!$FirstName -and $LastName) {
+                $strFilter = "(&(objectCategory=user)(objectClass=user)(sn=$LastName))"
+                } else {
+                write-host "No users were found with that first name or last name. Please try again."
+                Break
+                }            
+        
+        $objSearcher = [adsisearcher][ADSI]"GC://$NewDomain"
+        $objSearcher.PageSize = 1000
+        $objSearcher.Filter = $strFilter
+        $objSearcher.SearchScope = "Subtree"
+        $colResults = $objSearcher.FindAll()
+        $($colResults.Properties.samaccountname) | % {$(Search-AD -EmployeeID $_ -Domain $Domain)}
+
+        }
+    }

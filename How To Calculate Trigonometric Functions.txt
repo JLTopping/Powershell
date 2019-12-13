@@ -1,0 +1,41 @@
+Function Trig {
+    param(
+    [parameter(Mandatory=$true)][ValidateSet("Sin", "Cos", "Tan", "Csc", "Sec", "Cot")][string]$Function,
+    [parameter(Mandatory=$true)]$Degrees, 
+    [ValidateSet("Degrees", "Radians")][string]$DegRad = "Degrees"
+    )
+
+    #Local Variables
+    $Result = 0
+    $Sign = 1
+    $Pi = [math]::PI
+    #Most Accurate with this program
+    $ToPlace = 6
+
+
+    Switch ($Function) {
+        "Sin" {$Power = 1}
+        "Cos" {$Power = 0}
+        "Tan" {[math]::Round($((Trig Sin $Degrees $DegRad) / (Trig Cos $Degrees $DegRad)), 5); $Break = $true}
+        "Csc" {$(1 / (Trig Sin $Degrees $DegRad)); $Break = $true}
+        "Sec" {$(1 / (Trig Cos $Degrees $DegRad)); $Break = $true}
+        "Cot" {[math]::Round($((Trig Cos $Degrees $DegRad) / (Trig Sin $Degrees $DegRad)), 5); $Break = $true}
+        }
+
+    if ($Break) {$Break = $false; Break}
+
+    if ($DegRad -like "Degrees") {$Degrees = $(($Degrees % 360 + 360) % 360) * 0.0174533}
+        elseif ($DegRad -like "Radians") {$Degrees = $(($Degrees % (2 * $Pi) + (2 * $Pi)) % (2 * $Pi))}
+
+    #Put everything in a -Pi to +Pi Range
+    $OutDeg = (($Degrees + $Pi) % (2 * $Pi)) - $Pi
+    
+    #Create Factorial Function
+    Function Factorial ([int]$x) {if($x -le 1) {return 1} else {return $x * (Factorial ($x=$x-1))}}
+    
+    #MAIN FUNCTION
+    1..$ToPlace | % {$Result += [math]::Pow($OutDeg, $Power) / [int](Factorial $Power) * $Sign; $Sign *= -1; $Power += 2}
+    
+    #Return Result    
+    [math]::Round($Result, 5)
+    }

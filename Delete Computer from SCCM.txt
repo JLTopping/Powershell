@@ -1,0 +1,24 @@
+Function Delete-SCCMComputer {
+    param(
+    [parameter(mandatory=$true)]$Computers,
+    [parameter(mandatory=$true)]$SCCMServer,
+    [parameter(mandatory=$true)]$SiteName
+    )
+ 
+    ForEach ($Computer in $Computers) { 
+    
+        #Find Computer
+        $Comp = gwmi -CN $SCCMServer -NameSpace root\sms\site_$($SiteName) -Class sms_r_system -Filter "Name='$($Computer)'"
+        
+        if ($Comp) {
+  
+            # Output to screen 
+            Write-Host "$Computer with resourceID $($Comp.ResourceID) will be deleted." 
+     
+            # Delete the computer account 
+            $Comp.delete() 
+     
+            } else {}
+
+        }
+    }

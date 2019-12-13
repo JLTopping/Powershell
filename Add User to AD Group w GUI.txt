@@ -1,0 +1,134 @@
+
+#Prompt for User
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = 'Department Drive Access'
+$form.Size = New-Object System.Drawing.Size(350,175)
+$form.StartPosition = 'CenterScreen'
+
+$OKButton = New-Object System.Windows.Forms.Button
+$OKButton.Location = New-Object System.Drawing.Point(75,100)
+$OKButton.Size = New-Object System.Drawing.Size(75,23)
+$OKButton.Text = 'OK'
+$OKButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$form.AcceptButton = $OKButton
+$form.Controls.Add($OKButton)
+
+$CancelButton = New-Object System.Windows.Forms.Button
+$CancelButton.Location = New-Object System.Drawing.Point(150,100)
+$CancelButton.Size = New-Object System.Drawing.Size(75,23)
+$CancelButton.Text = 'Cancel'
+$CancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$form.CancelButton = $CancelButton
+$form.Controls.Add($CancelButton)
+
+$label = New-Object System.Windows.Forms.Label
+$label.Location = New-Object System.Drawing.Point(10,20)
+$label.Size = New-Object System.Drawing.Size(280,20)
+$label.Text = 'Please enter your INT/EXT Number'
+$form.Controls.Add($label)
+
+$textBox = New-Object System.Windows.Forms.TextBox
+$textBox.Location = New-Object System.Drawing.Point(10,40)
+$textBox.Size = New-Object System.Drawing.Size(260,20)
+$form.Controls.Add($textBox)
+
+$form.Topmost = $true
+
+$form.Add_Shown({$textBox.Select()})
+$result = $form.ShowDialog()
+
+if ($result -eq [System.Windows.Forms.DialogResult]::OK)
+{
+    $SamAccountName = $textBox.Text
+}
+
+#Ask for Department
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+$form = New-Object System.Windows.Forms.Form
+$form.Text = 'Department Drive Access'
+$form.Size = New-Object System.Drawing.Size(350,465)
+$form.StartPosition = 'CenterScreen'
+
+$OKButton = New-Object System.Windows.Forms.Button
+$OKButton.Location = New-Object System.Drawing.Point(75,375)
+$OKButton.Size = New-Object System.Drawing.Size(75,23)
+$OKButton.Text = 'OK'
+$OKButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+$form.AcceptButton = $OKButton
+$form.Controls.Add($OKButton)
+
+$CancelButton = New-Object System.Windows.Forms.Button
+$CancelButton.Location = New-Object System.Drawing.Point(150,375)
+$CancelButton.Size = New-Object System.Drawing.Size(75,23)
+$CancelButton.Text = 'Cancel'
+$CancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+$form.CancelButton = $CancelButton
+$form.Controls.Add($CancelButton)
+
+$label = New-Object System.Windows.Forms.Label
+$label.Location = New-Object System.Drawing.Point(10,20)
+$label.Size = New-Object System.Drawing.Size(280,30)
+$label.Text = 'Please make a department selection from the list below:'
+$form.Controls.Add($label)
+
+$listBox = New-Object System.Windows.Forms.Listbox
+$listBox.Location = New-Object System.Drawing.Point(10,55)
+$listBox.Size = New-Object System.Drawing.Size(260,350)
+
+$listBox.SelectionMode = 'MultiExtended'
+
+[void] $listBox.Items.Add('00 Management')
+[void] $listBox.Items.Add('01 GM')
+[void] $listBox.Items.Add('02 HR')
+[void] $listBox.Items.Add('03 FIN')
+[void] $listBox.Items.Add('04 PIM')
+[void] $listBox.Items.Add('05 IE')
+[void] $listBox.Items.Add('06 Quality')
+[void] $listBox.Items.Add('07 Purchase')
+[void] $listBox.Items.Add('08 Logistics')
+[void] $listBox.Items.Add('...')
+
+$listBox.Height = 325
+$form.Controls.Add($listBox)
+$form.Topmost = $true
+
+$result = $form.ShowDialog()
+
+if ($result -eq [System.Windows.Forms.DialogResult]::OK)
+{
+    $DepartmentSelection = $listBox.SelectedItems
+}
+
+#Filtering Through Input
+
+If ($DepartmentSelection -like  "*00*") {
+$DP = "Management_R/W"
+} ElseIf ($DepartmentSelection -like  "*01*") {
+$DP = "GM_R/W"
+} ElseIf ($DepartmentSelection -like  "*02*") {
+$DP = "HR_R/W"
+} ElseIf ($DepartmentSelection -like  "*03*") {
+$DP = "Finance_R/W"
+} ElseIf ($DepartmentSelection -like  "*04*") {
+$DP = "IT_R/W"
+} ElseIf ($DepartmentSelection -like  "*05*") {
+$DP = "IE_R/W"
+} ElseIf ($DepartmentSelection -like  "*06*") {
+$DP = "QA_R/W"
+} ElseIf ($DepartmentSelection -like  "*07*") {
+$DP = "Purchasing_R/W"
+} ElseIf ($DepartmentSelection -like  "*08*") {
+$DP = "Logistics_R/W"
+} ElseIf ($DepartmentSelection -like  "*09*") {
+$DP = "..."
+}
+
+#Assigning To Group
+$User = get-aduser $SamAccountName -server "your.server"
+$Group = get-adgroup -server "your.server" -Identity "CN=$DP,OU=Drive,OU=Security,OU=This,OU=That,DC=Your,DC=Domain"
+Add-ADGroupMember -Identity $Group -Members $User -Server "your.server"

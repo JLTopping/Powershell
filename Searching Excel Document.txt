@@ -1,0 +1,32 @@
+Function Search-Excel {
+    param(
+    [parameter(mandatory=$true)][ValidateScript({Test-Path $_ })]$ExcelFilePath,
+    [parameter(mandatory=$true)]$ItemToSearchFor  #Also Takes Lists
+    )
+
+    #Open Excel
+    $Excel = New-Object -ComObject Excel.Application 
+    $Workbook = $Excel.Workbooks.Open($ExcelFilePath)
+
+    #Iterating Through Items To Search For
+    ForEach ($Item in $ItemToSearchFor) {
+        
+        #Iterating Through WorkSheets
+        foreach ($Worksheet in $Workbook.Worksheets) {
+
+            #Searching for 
+            $Found = $WorkSheet.Cells.Find($Item)}
+            if ($Found) {
+            
+            #Outputing Properties if Found
+            "Row $($Found.Row)`nColumn $($Found.Column)"
+
+            #Could Not Find
+            } else {"Could Not Find `"$Item`" in Excel Document."}
+        }
+
+    #Clean Up
+    $Excel.Quit()
+    if ([System.Runtime.Interopservices.Marshal]::ReleaseComObject($Excel)) {}
+    Remove-Variable excel
+    }

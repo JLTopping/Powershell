@@ -1,0 +1,27 @@
+Function Get-SRApproval {
+    param(
+    [parameter(mandatory)][string]$SR
+    )
+
+    $SMcom = "your.servicemanager.server"    #Edit
+
+    #SCSM Variables
+    $RAtoNums = "6e05d202-38a4-812e-34b8-b11642001a80"
+    $Appr = "9441a6d1-1317-9520-de37-6c54512feeba"
+    $N2ANames = "90da7d7c-948b-e16e-f39a-f6e3d1ffc921"
+
+    #Pull SCSM Service Request Tasks/Objects
+    $SRTasks = Get-SCSMObject -Class (Get-SCSMClass -Name System.WorkItem.ServiceRequest$ -ComputerName $SMcom) -Filter "Id -eq $SR" -ComputerName $SMcom | % {Get-SCSMRelationshipObject -bysource $_ -ComputerName $SMcom}
+    
+    #Get Objects by Relationship IDs of Who Still Needs to Approve
+    $NeedToApproveList = ($SRTasks | ? {$_.relationshipid -eq $RAtoNums}).TargetObject.DisplayName | ? {$(($SRTasks | ? {$_.relationshipid -eq $Appr}).SourceObject.DisplayName) -notcontains $_}
+    
+    #Ouput the Name of the Person/People to Approve
+    Foreach ($Person in $NeedToApproveList) {
+        $P2A = ($SRTasks | ? {($_.relationshipid -eq $N2ANames) -and ($_.sourceobject.displayname -eq $Person)}).TargetObject.DisplayName
+        write-host "$P2A needs to approve."
+        }
+    If ($($NeedToApproveList.count) -eq 0) {
+        write-host "All parties have approved." -ForegroundColor Green
+        }
+    }

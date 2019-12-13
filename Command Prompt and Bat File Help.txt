@@ -1,0 +1,70 @@
+::Add User to Computer
+net use /add <Name> <Password>
+
+::Add User to Group
+net localgroup <GroupName> <Name> /add
+
+::Kill Task
+TaskKill /im <TaskName> /f
+
+::If Else
+if <%variable%>==<thing> goto Place1 if NOT goto Place 2
+
+::Jump Places in the Script
+:Place 1
+<do something>
+GoTo Place2
+<this cmd gets ignored>
+:Place 2
+<let's make a loop>
+GoTo Place1
+
+::Pull Text from File
+type <file> | more
+
+::Shared Network Drive
+net use <DriveLetter> <\\server\folder>
+
+net use <DriveLetter> <\\server\folder> <Password> /User:<Domain>\<User>
+
+net use <DriveLetter> /delete
+
+::Iterate Through List
+for /f %%1 in (<Text\File\With\List.txt>) do <bat\file.bat> %%1
+
+::Copy Directory
+xcopy <source\path> <destination\path\> /e
+
+::Remove Directory
+rd /s "<directory\path>"
+
+::Copy Item
+copy /y <source\item.ext> <destination\path\>
+
+::Multiple Commands
+<first command> && <second command>
+
+::Call Powershell
+powershell.exe -command "<your powershell commands here. to use double quotes you need to use \""this syntax\"" or `"""this syntax`""">"
+
+powershell.exe -noprofile -executionpolicy bypass -file <your\path\to\ps1\file.ps1>
+
+::Pass Variable to Powershell
+set /p <variable>="<Enter Prompt for Variable: >"
+powershell.exe -noprofile -executionpolicy bypass -file <your\path\to\ps1\file.ps1>
+<Use "$env:<variable> inside powershell file to call created variable>
+
+
+
+
+
+::PSEXEC::
+
+::Remote Cmd Prompt
+psexec \\<ComputerName> cmd
+
+::Remote Execute Cmd
+psexec \\<ComputerName> <command to execute>
+
+::Remote Shutdown (-r for restart)
+psexec \\<ComputerName> shutdown -r -f

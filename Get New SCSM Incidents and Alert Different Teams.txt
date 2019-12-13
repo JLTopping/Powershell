@@ -1,0 +1,168 @@
+Powershell.exe -Windowstyle Hidden {    #Used to Run Process in Background
+$RefreshRate = 300   #In Seconds   #EDIT
+
+#Constant Variables
+$SMcom = "fake.Service.Manager.Server"   #EDIT
+$Classification = "Your Classification-Filter"   #EDIT
+$Classification2 = "Your Classification-Filter 2"   #EDIT
+$ActiveStatus = (Get-SCSMEnumeration -name IncidentStatusEnum.Active$ -ComputerName $SMcom).id.ToString()
+$AFClass = Get-SCSMRelationshipClass -Name System.WorkItemAffectedUser$ -ComputerName $SMcom
+
+$NetworkingTierQueue = "01 - Networking"   #EDIT
+$ManufacturingTierQueue = "02 - Manufacturing Services"   #EDIT
+$OnsiteTierQueue = "03 - Onsite Services"   #EDIT
+
+$NetworkGuys = ("Email.Address@domain.com")   #EDIT
+$ManufacturingGuys = ("Other.Email@domain.com", "Another.Email@domain.com")   #EDIT
+$OnsiteGuys = ("Yet.Another@domain.com")   #EDIT
+
+#Initiating Lists
+$NetworkingIRs = @()
+$ManufacturingIRs = @()
+$OnsiteIRs = @()
+
+#Making Functions
+Function Send-Message {   
+
+    param(
+    $To,
+    $Subject,
+    $Body
+    )    
+            $smtpServer = "172.01.23.45"   #EDIT
+            $msg = new-object Net.Mail.MailMessage
+            $smtp = new-object Net.Mail.SmtpClient($smtpServer)
+            $msg.From = "New.Ticket@domain.com"   #EDIT
+            $msg.ReplyTo = "noreply@domain.com"   #EDIT
+
+            #Send to all people in the given list
+            foreach ($Person in $To) {$msg.To.Add($Person)}
+
+            $msg.Subject = $Subject
+            $msg.Body = $Body
+            $smtp.Send($msg)
+            }
+
+Function NewTicketNotification {
+    
+    #Resetting New IR Lists
+    $NewNetworkingList = @()
+    $NewManufacturingList = @()
+    $NewOnsiteList = @()
+
+
+    #Check if this is first time running through
+    If ($NetworkingIRs -or $ManufacturingIRs -or $OnsiteIRs) {
+
+        #Filter SCSM to find all Active Tickets in Tuscaloosa
+        Get-SCSMObject -Class (Get-SCSMClass -name system.workitem.incident$ -ComputerName $SMcom) -ComputerName $SMcom -Filter "Status -eq $ActiveStatus" | where {$($_.classification.displayname -like $Classification) -or $($_.classification.displayname -like $Classification2)} | foreach {
+            
+            #Filtering Work Group
+            if ($($_.tierqueue.displayname) -like $NetworkingTierQueue) {
+                
+                #Filtering for New IRs
+                if ($NetworkingIRs -notcontains $_.id) {
+
+                    #Creating Email Variables
+                    $IROut = if ($_.id) {$_.id} else {"No IR Number Provided"}
+                    $TitleOut = if ($_.title) {$_.title} else {"No Title Provided"}
+                    $DescriptionOut = if ($_.description) {$_.description} else {"No Description Provided"}
+                    $ContactOut = if ($_.contactmethod) {$_.contactmethod} else {"No Contact Method Provided"}
+                    $PriorityOut = if ($_.priority) {$_.priority} else {"No Priority Provided"}
+                    $UserOut = try {get-scsmobject -class (get-scsmclass -name system.workitem.incident$ -ComputerName $SMcom) -Filter "ID -eq $IROut" -ComputerName $SMcom | % {(Get-SCSMRelatedObject -SMObject $_ -Relationship $AFClass -ComputerName $SMcom).DisplayName}} catch {"No User Was Provided"}
+
+
+                    $Subject = "$IROut [$PriorityOut] : $TitleOut"
+
+                    $Body = "$DescriptionOut`n`n$UserOut`n$ContactOut"
+
+                    Send-Message -To $NetworkGuys -Subject $Subject -Body $Body
+
+                    #Out-File -FilePath "C:\users\public\desktop\New IRs.txt" -Append -InputObject "New Networking IR : $($_.id)`n$((Get-date).DateTime)`n`n"
+                    }
+
+                #Adding All IRs to New List
+                $NewNetworkingList += [string]$($_.id)
+                } elseif ($($_.tierqueue.displayname) -like $ManufacturingTierQueue) {
+                if ($ManufacturingIRs -notcontains $_.id) {
+
+                    #Creating Email Variables
+                    $IROut = if ($_.id) {$_.id} else {"No IR Number Provided"}
+                    $TitleOut = if ($_.title) {$_.title} else {"No Title Provided"}
+                    $DescriptionOut = if ($_.description) {$_.description} else {"No Description Provided"}
+                    $ContactOut = if ($_.contactmethod) {$_.contactmethod} else {"No Contact Method Provided"}
+                    $PriorityOut = if ($_.priority) {$_.priority} else {"No Priority Provided"}
+                    $UserOut = try {get-scsmobject -class (get-scsmclass -name system.workitem.incident$ -ComputerName $SMcom) -Filter "ID -eq $IROut" -ComputerName $SMcom | % {(Get-SCSMRelatedObject -SMObject $_ -Relationship $AFClass -ComputerName $SMcom).DisplayName}} catch {"No User Was Provided"}
+
+
+                    $Subject = "$IROut [$PriorityOut] : $TitleOut"
+
+                    $Body = "$DescriptionOut`n`n$UserOut`n$ContactOut"
+
+                    Send-Message -To $ManufacturingGuys -Subject $Subject -Body $Body
+
+                    #Out-File -FilePath "C:\users\public\desktop\New IRs.txt" -Append -InputObject "New Manufacturing IR : $($_.id)`n$((Get-date).DateTime)`n`n"
+                    }
+
+                #Adding All IRs to New List
+                $NewManufacturingList += [string]$($_.id)
+                } elseif ($($_.tierqueue.displayname) -like $OnsiteTierQueue) {
+                if ($OnsiteIRs -notcontains $_.id) {
+
+                    #Creating Email Variables
+                    $IROut = if ($_.id) {$_.id} else {"No IR Number Provided"}
+                    $TitleOut = if ($_.title) {$_.title} else {"No Title Provided"}
+                    $DescriptionOut = if ($_.description) {$_.description} else {"No Description Provided"}
+                    $ContactOut = if ($_.contactmethod) {$_.contactmethod} else {"No Contact Method Provided"}
+                    $PriorityOut = if ($_.priority) {$_.priority} else {"No Priority Provided"}
+                    $UserOut = try {get-scsmobject -class (get-scsmclass -name system.workitem.incident$ -ComputerName $SMcom) -Filter "ID -eq $IROut" -ComputerName $SMcom | %{(Get-SCSMRelatedObject -SMObject $_ -Relationship $AFClass -ComputerName $SMcom).DisplayName}} catch {"No User Was Provided"}
+
+
+                    $Subject = "$IROut [$PriorityOut] : $TitleOut"
+
+                    $Body = "$DescriptionOut`n`n$UserOut`n$ContactOut"
+
+                    Send-Message -To $OnsiteGuys -Subject $Subject -Body $Body
+
+                    #Out-File -FilePath "C:\users\public\desktop\New IRs.txt" -Append -InputObject "New Onsite IR : $($_.id)`n$((Get-date).DateTime)`n`n"
+                    }
+
+                #Adding All IRs to New List
+                $NewOnsiteList += [string]$($_.id)
+                }
+            }
+
+    #If this is first time running through
+    } else {
+            
+        #write-host "Creating Lists" -ForegroundColor Magenta
+
+        #Find all Active Tickets in Tuscaloosa
+        Get-SCSMObject -Class (Get-SCSMClass -name system.workitem.incident$ -ComputerName $SMcom) -ComputerName $SMcom -Filter "Status -eq $ActiveStatus" | where {$_.classification.displayname -like $Classification} | foreach {
+            
+            #Add them to correct work group IR list
+            if ($($_.tierqueue.displayname) -like $NetworkingTierQueue) {
+                $NewNetworkingList += [string]($_.id)
+                } elseif ($($_.tierqueue.displayname) -like $ManufacturingTierQueue) {
+                $NewManufacturingList += [string]($_.id)
+                } elseif ($($_.tierqueue.displayname) -like $OnsiteTierQueue) {
+                $NewOnsiteList += [string]($_.id)
+                }
+            }
+        }
+        
+    #Update IR List
+    $NetworkingIRs = $NewNetworkingList
+    $ManufacturingIRs = $NewManufacturingList
+    $OnsiteIRs = $NewOnsiteList
+
+    #write-host "Refreshed at $((Get-date).DateTime)" -ForegroundColor Green
+
+    #Pause before running through cycle again
+    sleep $RefreshRate
+    NewTicketNotification
+    }
+
+NewTicketNotification
+
+}

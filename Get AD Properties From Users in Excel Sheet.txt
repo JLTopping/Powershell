@@ -1,0 +1,31 @@
+#MUST HAVE IMPORTEXCEL MODULE
+Function Get-ADPropertyFromList {
+    param(
+    [parameter(mandatory=$true)][ValidateScript({Test-Path $_ })]$PathToExcelSheet,
+    [parameter(mandatory=$true)]$ExcelColumnTitleWithLastNames,
+    [parameter(mandatory=$true)]$ExcelColumnTitleWithFirstNames,
+    [parameter(mandatory=$true)]$UserProperty,
+    [switch]$AllProperties,
+    $ADServer = $env:USERDNSDOMAIN
+    )
+
+    #Pull Excel Sheet
+    $ExcelList = Import-Excel $PathToExcelSheet
+
+    #Find Num of Used Rows
+    $NumRows = (Get-ExcelSheetInfo $PathToExcelSheet).name | ? {$_ -like 'Rows*'} | % {$LS = $_.lastindexof(' ') + 1; $_.substring($LS, $($_.length - $LS))}
+    
+    #Look Up Information From Each Row's User
+    0..$NumRows | % {
+
+        #Create Local Variables of Each User
+        $Surname = $ExcelList[$_].$ExcelColumnTitleWithLastNames
+        $GivenName = $ExcelList[$_].$ExcelColumnTitleWithFirstNames | % {if ($_ -like '* *') {$_.substring(0, $_.indexof(' '))} else {$_}}
+        
+        #Look Up User in AD
+        $User = Get-aduser -filter {(surname -eq $Surname) -and (givenname -eq $GivenName)} -Server $ADServer -Properties *
+
+        #Output Property of Each User
+        if ($AllProperties) {$User} else {$User.$UserProperty}
+        }
+    }

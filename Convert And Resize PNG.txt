@@ -1,0 +1,93 @@
+Function ConvertAndResize-PNGToJPG {
+    param(
+    [parameter(mandatory=$true)][string]$Folder,
+    $Width = 1024,
+    $Height = 768,
+    [switch]$Recurse
+    )
+
+    #Local Variables
+    $InputObject = @()
+    $InputFolder = $null
+    $InputItem = $null
+
+
+    Function Resize-Image {
+        Param(
+        [Parameter(Mandatory=$true)][string]$InputFile, 
+        [string]$OutputFile, 
+        [int32]$Width, 
+        [int32]$Height, 
+        [int32]$Scale
+        )
+
+        #Add .Net System.Drawing
+        Add-Type -AssemblyName System.Drawing
+
+        #Pull Image
+        $img = [System.Drawing.Image]::FromFile((Get-Item $InputFile))
+
+        #Scale Width/Height
+        if($Width -gt 0) { [int32]$new_width = $Width } elseif($Scale -gt 0) { [int32]$new_width = $img.Width * ($Scale / 100) } else { [int32]$new_width = $img.Width / 2 }; if($Height -gt 0) { [int32]$new_height = $Height } elseif($Scale -gt 0) { [int32]$new_height = $img.Height * ($Scale / 100) } else { [int32]$new_height = $img.Height / 2 }
+        
+        #Draw New Image
+        $img2 = New-Object System.Drawing.Bitmap($new_width, $new_height)
+        $graph = [System.Drawing.Graphics]::FromImage($img2)
+        $graph.DrawImage($img, 0, 0, $new_width, $new_height)
+
+        #Save New Image
+        if($OutputFile -ne '') {$img2.Save($OutputFile)
+
+            #Clean Up
+            $img.Dispose()
+            Remove-Item $InputFile
+            }
+        }
+        
+    Function ConvertTo-Jpg {
+        [cmdletbinding()] Param(
+        [Parameter(Mandatory=$true, ValueFromPipeline = $true)] $Path 
+        )
+
+        $Path | foreach {
+
+            #Pull Image
+            $image = [System.Drawing.Image]::FromFile($_)
+
+            #Convert Image
+            $FilePath = [IO.Path]::ChangeExtension($_, '.jpg')
+            $image.Save($FilePath, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+            
+            #Clean Up
+            $image.Dispose()}
+        }
+        
+    #Locate all PNG's
+    if ($Recurse) {$InputObject += $(gci "$InputFolder*.png" -Force -Recurse)}
+        else {$InputObject += $(gci "$InputFolder*.png" -Force)}
+
+    $InputObject = $InputObject | select -Unique
+
+
+    $InputObject | % {
+
+        #Create Temporary Folder
+        if (!$(Test-Path "$($_.DirectoryName)\Temp")) {
+            New-Item $_.DirectoryName -Name 'Temp' -ItemType Directory | % {
+                $_.attributes = "Hidden"
+                }
+            }
+        $OutputPath = "$($_.DirectoryName)\Temp"
+
+        #Run Functions
+        Resize-Image -InputFile $_.fullname -OutputFile $OutputPath$($_.name) -Width $Width -Height $Height
+        ConvertTo-Jpg $OutputPath$($_.name)
+
+        #Clean Up
+        Remove-Item $OutputPath$($_.name)
+        Remove-Item "$($_.DirectoryName)\Temp" -Force -Recurse
+        }
+        
+    #Flush Stored Memory
+    [System.GC]::Collect()
+    }

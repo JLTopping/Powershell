@@ -1,0 +1,317 @@
+#MUST HAVE SCSM CMDLETS INSTALLED
+#This script will auto-resolve the ticket after selecting "OK"
+#Affected User and Title of Issue must be filled in
+
+# ## ## ## Default Values ## ## ## #
+#                                  #
+#  Priority - Low                  #
+#  Description - "No Description"  #
+#  Resolution - "Resolved"         #
+#                                  #
+####################################
+
+Function TryAgain {
+    param(
+    [validateset("Plain", "NoUser", "NeedMoreInfo")]$Reason = "Plain"
+    )
+
+    If ($Reason -like "NeedMoreInfo") {
+        $MessageBody = "Not enough information was provided.`nPlease try again."
+        } elseif ($Reason -like "NoUser") {
+        $MessageBody = "We couldn't find that user. Please try again."
+        } else {
+        $MessageBody = "Please try again."
+        } 
+
+    Add-Type -AssemblyName PresentationCore,PresentationFramework
+    $ButtonType = [System.Windows.MessageBoxButton]::OK
+    $MessageIcon = [System.Windows.MessageBoxImage]::Error
+    
+    $MessageTitle = "Error"
+ 
+    $Result = [System.Windows.MessageBox]::Show($MessageBody,$MessageTitle,$ButtonType,$MessageIcon)
+    Create-Ticket
+    }
+
+Function Create-Ticket {
+
+    #Reset Local Variables
+    $AffectedUserINTOut = $null
+    $TitleOut = $null
+    $DescriptionOut = $null
+    $ResolutionDescriptionOut = $null
+    $UrgencyOut = $null
+
+    #Prompt for Department
+    Add-Type -AssemblyName System.Windows.Forms
+    Add-Type -AssemblyName System.Drawing
+    
+    $form = New-Object System.Windows.Forms.Form
+    $form.Text = 'Create a Ticket'
+    $form.Size = New-Object System.Drawing.Size(600,320)
+    $form.StartPosition = 'CenterScreen'
+    
+    $OKButton = New-Object System.Windows.Forms.Button
+    $OKButton.Location = New-Object System.Drawing.Point(395,230)
+    $OKButton.Size = New-Object System.Drawing.Size(75,23)
+    $OKButton.Text = 'OK'
+    $OKButton.DialogResult = [System.Windows.Forms.DialogResult]::OK
+    $form.AcceptButton = $OKButton
+    $form.Controls.Add($OKButton)
+    
+    $CancelButton = New-Object System.Windows.Forms.Button
+    $CancelButton.Location = New-Object System.Drawing.Point(485,230)
+    $CancelButton.Size = New-Object System.Drawing.Size(75,23)
+    $CancelButton.Text = 'Cancel'
+    $CancelButton.DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+    $form.CancelButton = $CancelButton
+    $form.Controls.Add($CancelButton)
+    
+    $Mandatory = New-Object System.Windows.Forms.Label
+    $Mandatory.Location = New-Object System.Drawing.Point(10,235)
+    $Mandatory.Size = New-Object System.Drawing.Size(280,20)
+    $Mandatory.Text = '*Must be filled out prior to submitting form.'
+    $form.Controls.Add($Mandatory)
+    
+    $AffectedUser = New-Object System.Windows.Forms.Label
+    $AffectedUser.Location = New-Object System.Drawing.Point(10,20)
+    $AffectedUser.Size = New-Object System.Drawing.Size(280,20)
+    $AffectedUser.Text = '*User INT'
+    $form.Controls.Add($AffectedUser)
+    
+    $AffectedUserBox = New-Object System.Windows.Forms.TextBox
+    $AffectedUserBox.Location = New-Object System.Drawing.Point(10,40)
+    $AffectedUserBox.Size = New-Object System.Drawing.Size(260,20)
+    $form.Controls.Add($AffectedUserBox)
+
+    $Urgency = New-Object System.Windows.Forms.Label
+    $Urgency.Location = New-Object System.Drawing.Point(300,20)
+    $Urgency.Size = New-Object System.Drawing.Size(280,20)
+    $Urgency.Text = ' Urgency'
+    $form.Controls.Add($Urgency)
+    
+    $UrgencyBox = New-Object System.Windows.Forms.Listbox
+    $UrgencyBox.Location = New-Object System.Drawing.Point(300,40)
+    $UrgencyBox.Size = New-Object System.Drawing.Size(260,20)
+
+    [void] $UrgencyBox.Items.Add('Low')
+    [void] $UrgencyBox.Items.Add('Medium')
+    [void] $UrgencyBox.Items.Add('High')
+    
+    $UrgencyBox.Height = 50
+    $form.Controls.Add($UrgencyBox)
+
+    $Title = New-Object System.Windows.Forms.Label
+    $Title.Location = New-Object System.Drawing.Point(10,70)
+    $Title.Size = New-Object System.Drawing.Size(280,20)
+    $Title.Text = '*Title'
+    $form.Controls.Add($Title)
+        
+    $TitleBox = New-Object System.Windows.Forms.TextBox
+    $TitleBox.Location = New-Object System.Drawing.Point(10,90)
+    $TitleBox.Size = New-Object System.Drawing.Size(260,20)
+    $form.Controls.Add($TitleBox)
+        
+    $Description = New-Object System.Windows.Forms.Label
+    $Description.Location = New-Object System.Drawing.Point(10,120)
+    $Description.Size = New-Object System.Drawing.Size(280,20)
+    $Description.Text = ' Description'
+    $form.Controls.Add($Description)
+    
+    $DescriptionBox = New-Object System.Windows.Forms.TextBox
+    $DescriptionBox.Location = New-Object System.Drawing.Point(10,140)
+    $DescriptionBox.Size = New-Object System.Drawing.Size(550,100)
+    $form.Controls.Add($DescriptionBox)
+
+    $Resolution = New-Object System.Windows.Forms.Label
+    $Resolution.Location = New-Object System.Drawing.Point(10,170)
+    $Resolution.Size = New-Object System.Drawing.Size(280,20)
+    $Resolution.Text = ' Resolution'
+    $form.Controls.Add($Resolution)
+    
+    $ResolutionBox = New-Object System.Windows.Forms.TextBox
+    $ResolutionBox.Location = New-Object System.Drawing.Point(10,190)
+    $ResolutionBox.Size = New-Object System.Drawing.Size(550,100)
+    $form.Controls.Add($ResolutionBox)
+    
+    $form.Topmost = $true
+    
+    $form.Add_Shown({$AffectedUserBox.Select()})
+    $form.Add_Shown({$TitleBox.Select()})
+    $form.Add_Shown({$DescriptionBox.Select()})
+    $form.Add_Shown({$ResolutionBox.Select()})
+    $result = $form.ShowDialog()
+    
+    if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+        if ($AffectedUserBox.Text -like '') {TryAgain NeedMoreInfo} else {$AffectedUserINTOut = $AffectedUserBox.Text}
+        if ($TitleBox.Text -like '') {TryAgain NeedMoreInfo} else {$TitleOut = $TitleBox.Text}
+        if ($DescriptionBox.Text -like '') {$DescriptionOut = 'No Description'} else {$DescriptionOut = $DescriptionBox.Text}
+        if ($ResolutionBox.Text -like '') {$ResolutionDescriptionOut = 'Resolved'} else {$ResolutionDescriptionOut = $ResolutionBox.Text} 
+        if ($UrgencyBox.Text -like '') {$UrgencyOut = 'Low'} else {$UrgencyOut = $UrgencyBox.Text}
+        } else {
+        get-process | where {$_.name -like 'cmd'} | foreach {stop-process $_}
+        Exit
+        }
+
+Function Add-ActionLogEntry {
+    param (
+    [parameter(Mandatory=$true, Position=0)] $WIObject,
+    [parameter(Mandatory=$true, Position=1)][ValidateSet("Assign","AnalystComment","Closed","Escalated","EmailSent","EndUserComment","FileAttached","FileDeleted","Reactivate","Resolved","TemplateApplied")] [string] $Action,
+    [parameter(Mandatory=$true, Position=2)][string] $Comment,
+    [parameter(Mandatory=$true, Position=3)][string] $EnteredBy,
+    [parameter(Mandatory=$false, Position=4)][Nullable[boolean]] $IsPrivate = $false
+    )
+
+    #Choose the Action Log Entry to be created. Depending on the Action Log being used, the $propDescriptionComment Property could be either Comment or Description.
+    switch ($Action) {
+        Assign {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.RecordAssigned"; $ActionEnum = get-scsmenumeration $ActionType @scsmMGMTParams; $propDescriptionComment = "Description"}
+        AnalystComment {$CommentClass = "System.WorkItem.TroubleTicket.AnalystCommentLog"; $propDescriptionComment = "Comment"}
+        Closed {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.RecordClosed"; $ActionEnum = get-scsmenumeration $ActionType @scsmMGMTParams; $propDescriptionComment = "Description"}
+        Escalated {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.RecordEscalated"; $ActionEnum = get-scsmenumeration $ActionType @scsmMGMTParams; $propDescriptionComment = "Description"}
+        EmailSent {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.EmailSent"; $ActionEnum = get-scsmenumeration $ActionType @scsmMGMTParams; $propDescriptionComment = "Description"}
+        EndUserComment {$CommentClass = "System.WorkItem.TroubleTicket.UserCommentLog"; $propDescriptionComment = "Comment"}
+        FileAttached {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.FileAttached"; $ActionEnum = get-scsmenumeration $ActionType @scsmMGMTParams; $propDescriptionComment = "Description"}
+        FileDeleted {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.FileDeleted"; $ActionEnum = get-scsmenumeration $ActionType @scsmMGMTParams; $propDescriptionComment = "Description"}
+        Reactivate {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.RecordReopened"; $ActionEnum = get-scsmenumeration $ActionType @scsmMGMTParams; $propDescriptionComment = "Description"}
+        Resolved {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.RecordResolved"; $ActionEnum = get-scsmenumeration $ActionType; $propDescriptionComment = "Description"}
+        TemplateApplied {$CommentClass = "System.WorkItem.TroubleTicket.ActionLog"; $ActionType = "System.WorkItem.ActionLogEnum.TemplateApplied"; $ActionEnum = get-scsmenumeration $ActionType @scsmMGMTParams; $propDescriptionComment = "Description"}
+        }
+
+    #Alias on Type Projection for Service Requests and Problem and are singular, whereas Incident and Change Request are plural. Update $CommentClassName
+    if (($WIObject.ClassName -eq "System.WorkItem.Problem") -or ($WIObject.ClassName -eq "System.WorkItem.ServiceRequest")) {$CommentClassName = "ActionLog"} else {$CommentClassName = "ActionLogs"}
+
+    #Analyst and End User Comments Classes have different Names based on the Work Item class
+    if ($Action -eq "AnalystComment") {    
+        switch ($WIObject.ClassName) {
+            "System.WorkItem.Incident" {$CommentClassName = "AnalystComments"}
+            "System.WorkItem.ServiceRequest" {$CommentClassName = "AnalystCommentLog"}
+            "System.WorkItem.Problem" {$CommentClassName = "Comment"}
+            "System.WorkItem.ChangeRequest" {$CommentClassName = "AnalystComments"}  
+            }
+        }
+    if ($Action -eq "EndUserComment") {    
+        switch ($WIObject.ClassName) {
+            "System.WorkItem.Incident" {$CommentClassName = "UserComments"}
+            "System.WorkItem.ServiceRequest" {$CommentClassName = "EndUserCommentLog"}
+            "System.WorkItem.Problem" {$CommentClass = "System.WorkItem.TroubleTicket.AnalystCommentLog"; $CommentClassName = "Comment"}
+            "System.WorkItem.ChangeRequest" {$CommentClassName = "UserComments"} 
+            }
+        }
+
+    # Generate a new GUID for the entry
+    $NewGUID = ([guid]::NewGuid()).ToString()
+
+    # Create the object projection with properties
+    $Projection = @{__CLASS = "$($WIObject.ClassName)";
+                    __SEED = $WIObject;
+                    $CommentClassName = @{__CLASS = $CommentClass;
+                                        __OBJECT = @{Id = $NewGUID;
+                                            DisplayName = $NewGUID;
+                                            ActionType = $ActionType;
+                                            $propDescriptionComment = $Comment;
+                                            Title = "$($ActionEnum.DisplayName)";
+                                            EnteredBy  = $EnteredBy;
+                                            EnteredDate = (Get-Date).ToUniversalTime();
+                                            IsPrivate = $IsPrivate;
+                                        }
+                    }
+        }
+
+    #create the projection based on the work item class
+    switch ($WIObject.ClassName) {
+        "System.WorkItem.Incident" {New-SCSMObjectProjection -Type "System.WorkItem.IncidentPortalProjection" -Projection $Projection }
+        "System.WorkItem.ServiceRequest" {New-SCSMObjectProjection -Type "System.WorkItem.ServiceRequestProjection" -Projection $Projection @scsmMGMTParams}
+        "System.WorkItem.Problem" {New-SCSMObjectProjection -Type "System.WorkItem.Problem.ProjectionType" -Projection $Projection @scsmMGMTParams}
+        "System.WorkItem.ChangeRequest" {New-SCSMObjectProjection -Type "Cireson.ChangeRequest.ViewModel" -Projection $Projection @scsmMGMTParams}
+        }
+    }
+
+#Set SCSM Server
+$SMcom = 'your.scsm.server'     #Edit
+
+#Set Original Ticket Variables
+$TempID = "IR{0}" #SCSM will auto assign a number
+$Title = $TitleOut
+$Classification = 'your-default-classification'     #Edit
+$TierQueue = '01 - Onsite IT'     #Edit
+$Description = $DescriptionOut
+
+#Set the Variables Used Later
+$AffectedUser = $AffectedUserINTOut
+$Source = 'Console'
+$Resolution = 'Resolved'
+$ResolutionCategory = 'Fixed by Analyst'
+$ResolutionDescription = $ResolutionDescriptionOut
+ 
+#Set the impact and urgency of the incident
+$impact = Get-SCSMEnumeration -Name System.WorkItem.TroubleTicket.ImpactEnum.Low -ComputerName $SMcom
+$urgency = Get-SCSMEnumeration -Name System.WorkItem.TroubleTicket.UrgencyEnum.$UrgencyOut -ComputerName $SMcom
+
+#Find Variable Classes
+$IncidentClass = Get-SCSMClass -name system.workitem.incident$ -ComputerName $SMcom
+$UserClass = Get-SCSMClass -name System.Domain.User$ -ComputerName $SMcom 
+$AffectedUserRelClass  = Get-SCSMRelationshipClass -Name System.WorkItemAffectedUser$ -ComputerName $SMcom 
+$AssignedToUserRelClass  = Get-SCSMRelationshipClass -Name System.WorkItemAssignedToUser$ -ComputerName $SMcom 
+$ResolvedByUserRelClass = Get-SCSMRelationshipClass -Name System.WorkItem.TroubleTicketResolvedByUser -ComputerName $SMcom
+ 
+#Find Given SCSM Users
+$Me = Get-SCSMWhoAmI
+$User = Get-SCSMObject -Class $UserClass -Filter "Username -eq $AffectedUser" -ComputerName $SMcom
+
+#Check If INT Exists
+$Count = 0; if ($User) {if ($User.Count -gt 1) {$User | foreach {if ($Count -eq 0) {$User = $_; $Count++}}} else {}} else {TryAgain nouser}
+$User.DisplayName
+
+#Create a hashtable of the incident values
+$incidentHashTable = @{
+Id = $TempID
+Title = $Title
+Classification = $Classification
+TierQueue = $TierQueue
+Description = $Description
+Impact = $Impact
+Urgency = $Urgency
+}
+ 
+#Create the incident
+New-SCSMObject $IncidentClass -PropertyHashtable $incidentHashTable –PassThru -ComputerName $SMcom | foreach {$IR = $_.DisplayName}
+
+$IR
+
+#Find the Incident
+$Incident = Get-SCSMObject -Class $IncidentClass -ComputerName $SMcom -Filter "ID -eq $IR"
+
+#Create Resolved Date
+$ResolvedDate = $Incident.CreatedDate.AddMinutes(5)
+
+#Set Affected User, Assigned User, and Resolution
+New-SCSMRelationshipObject -Relationship $AffectedUserRelClass -Source $Incident -Target $User -ComputerName $SMcom -Bulk; 'AU'
+New-SCSMRelationshipObject -Relationship $AssignedToUserRelClass -Source $Incident -Target $Me -ComputerName $SMcom -Bulk; 'ATo'
+New-SCSMRelationshipObject -Relationship $ResolvedByUserRelClass -Source $Incident -Target $Me -ComputerName $SMcom -Bulk; 'RBU'
+Add-ActionLogEntry -WIObject $Incident -Action Resolved -Comment $ResolutionDescription -EnteredBy $Me -IsPrivate $false; 'AL'
+$Incident | Set-SCSMObject -Property Source -Value $Source -ComputerName $SMcom; 'S'
+$Incident | Set-SCSMObject -Property Status -Value $Resolution -ComputerName $SMcom; 'Res'
+$Incident | Set-SCSMObject -Property ResolutionDescription -Value $ResolutionDescription -ComputerName $SMcom; 'ResDesc'
+$Incident | Set-SCSMObject -Property ResolutionCategory -Value $ResolutionCategory -ComputerName $SMcom; 'ResCat'
+$Incident | Set-SCSMObject -Property ResolvedDate -Value $ResolvedDate -ComputerName $SMcom; 'ResDate'
+
+#Copy IR number to clipboard
+#$IR.Displayname | Out-Clipboard
+
+#Show IR
+
+Add-Type -AssemblyName PresentationCore,PresentationFramework
+$ButtonType = [System.Windows.MessageBoxButton]::OK
+$MessageIcon = [System.Windows.MessageBoxImage]::Information
+$MessageBody = "New IR : $IR"
+$MessageTitle = "New Ticket"
+[System.Windows.MessageBox]::Show($MessageBody,$MessageTitle,$ButtonType,$MessageIcon)
+
+
+#Write-Host "$($IR.DisplayName)" -ForegroundColor Green
+''
+''
+
+#Cycle to create another ticket
+#Create-Ticket
+}

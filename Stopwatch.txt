@@ -1,0 +1,12 @@
+#Used to Calculate Amount of Time a Function or Script Takes
+Function Start-Stopwatch {
+    $Script:StartTime = Get-Date
+    }
+
+Function Stop-Stopwatch {
+    if ($StartTime) {
+        (Get-Date) - $StartTime
+        } else {
+        "Start-Stopwatch was not activated."
+        }
+    }

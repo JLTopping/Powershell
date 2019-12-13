@@ -1,0 +1,18 @@
+$OriginalArray = @(1, 2, 3)
+$ThingToAdd = @(4, 5, 6)
+
+$OriginalArray += $ThingToAdd
+$OriginalArray.Count
+
+#Count = 6
+#(1, 2, 3, 4, 5, 6)
+
+
+$OriginalArray = @(1, 2, 3)
+$ThingToAdd = @(4, 5, 6)
+
+$OriginalArray += , $ThingToAdd
+$OriginalArray.Count
+
+#Count = 4
+#(1, 2, 3, (4, 5, 6))

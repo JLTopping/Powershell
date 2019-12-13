@@ -1,0 +1,112 @@
+#Credit To Other Source
+Function Set-WINRMListener {
+ [cmdletBinding()] 
+ Param ( 
+         # Enter a ComputerName or IP Address, accepts multiple ComputerNames 
+         [Parameter(  
+         ValueFromPipeline=$True,  
+         ValueFromPipelineByPropertyName=$True, 
+         Mandatory=$True, 
+         HelpMessage="Enter a ComputerName or IP Address, accepts multiple ComputerNames")]  
+         [String[]]$ComputerName, 
+         [Parameter( 
+         HelpMessage="Enter the IPv4 address range for the WinRM listener")] 
+         [String]$IPv4Range = '*', 
+         [Parameter( 
+         HelpMessage="Enter the IPv4 address range for the WinRM listener")] 
+         [String]$IPv6Range = '*' 
+     ) 
+ Begin { 
+         $HKLM = 2147483650 
+         $Key = "SOFTWARE\Policies\Microsoft\Windows\WinRM\Service" 
+         $DWORDName = "AllowAutoConfig"  
+         $DWORDvalue = "0x1" 
+         $String1Name = "IPv4Filter" 
+         $String2Name = "IPv6Filter" 
+     } 
+ Process { 
+  Foreach ($computer in $ComputerName) { 
+   Write-Verbose "Beginning function on $computer" 
+   Try { 
+     Write-Verbose "Attempting to create remote registry handle" 
+     $Reg = New-Object -TypeName System.Management.ManagementClass -ArgumentList \\$computer\Root\default:StdRegProv 
+     } Catch { 
+     Write-Warning $_.exception.message 
+     Write-Warning "The function will abort operations on $Computer" 
+     $problem =$true 
+     } 
+   if (-not($problem)) { 
+     Try { 
+       Write-Verbose "Attempting to create Remote Key" 
+       if (($reg.CreateKey($HKLM, $key)).returnvalue -ne 0) {
+         Throw "Failed to create key"
+         } 
+       } Catch { 
+       Write-Warning $_.exception.message 
+       Write-Warning "The function will abort operations on $Computer" 
+       $problem =$true 
+       } 
+     } 
+   if (-not($problem)) { 
+     Try { 
+        Write-Verbose "Attemping to set DWORD value" 
+        if (($reg.SetDWORDValue($HKLM, $Key, $DWORDName, $DWORDvalue)).ReturnValue -ne 0) {
+          Throw "Failed to set DWORD"
+          } 
+        } Catch { 
+        Write-Warning $_.exception.message 
+        Write-Warning "The function will abort operations on $Computer" 
+        $problem =$true 
+        } 
+      } 
+    if (-not($problem)) { 
+      Try { 
+        Write-Verbose "Attempting to set first REG_SZ Value" 
+        if (($reg.SetStringValue($HKLM, $Key, $String1Name, $IPv4Range)).ReturnValue -ne 0) {
+          Throw "Failed to set REG_SZ"
+          } 
+        } Catch { 
+        Write-Warning $_.exception.message 
+        Write-Warning "The function will abort operations on $Computer" 
+        $problem =$true 
+        } 
+      } 
+    if (-not($problem)) { 
+      Try { 
+        Write-Verbose "Attempting to set second REG_SZ Value" 
+        if (($reg.SetStringValue($HKLM, $Key, $String2Name, $IPv6Range)).ReturnValue -ne 0) {
+          Throw "Failed to set REG_SZ"
+          } 
+        } Catch { 
+        Write-Warning $_.exception.message 
+        Write-Warning "The function will abort operations on $Computer" 
+        $problem =$true 
+        } 
+      } 
+    if ($problem) {
+      $problem = $false
+      } Else {
+      Write-Verbose "Successfully completed operation on $computer"
+      } 
+    } 
+  } 
+End {} 
+} 
+
+$ComputerName = Read-Host -prompt "Enter Computer Name"
+Set-WINRMListener -ComputerName $ComputerName
+
+$RDP = Get-WmiObject -Class Win32_TerminalServiceSetting `
+            -Namespace root\CIMV2\TerminalServices `
+            -Computer $ComputerName `
+            -Authentication 6 `
+            -ErrorAction Stop
+
+$result = $RDP.SetAllowTsConnections(1,1)
+   if($result.ReturnValue -eq 0) {
+   Write-Host "$Computer : Enabled RDP Successfully"
+   "$Computer : RDP Enabled Successfully"
+ } else {
+   Write-Host "$Computer : Failed to enabled RDP"
+   "$Computer : Failed to enable RDP"
+}
